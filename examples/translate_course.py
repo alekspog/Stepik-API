@@ -1,6 +1,12 @@
 # Run with Python 3
-# Saves all step texts from course into single HTML file.
+# Translate all steps texts from course.
+import logging
 import requests
+from urllib.parse import quote
+from googletrans import Translator
+
+
+logger = logging.getLogger(__name__)
 
 # Enter parameters below:
 # 1. Get your keys at https://stepik.org/oauth2/applications/
@@ -9,6 +15,8 @@ client_id = "DKAOgdHrEaVBgshlsLllp9YTtRTXxUImQyVznrBY"
 client_secret = "EZIAoy31Q4V0YF8lDmHqgWOluVn5trNVM54XBgC2doi0zcdsYKT2vCeQc1ZcjR5AMD1QVTXzX9nmxT81AvlkNoA0Yo7Vuv2OHtVepHlEKblfit38eOfKEBPwGm0dhiTn"
 api_host = 'https://stepik.org'
 course_id = 1
+
+TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH = 15000
 
 # 2. Get a token
 auth = requests.auth.HTTPBasicAuth(client_id, client_secret)
@@ -48,9 +56,18 @@ def fetch_objects(obj_class, obj_ids, keep_order=True):
         return sorted(objs, key=lambda x: obj_ids.index(x['id']))
     return objs
 
-def translate(text: str):
 
-    return text.lower()
+def translate(text: str):
+    if len(quote(text)) > TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH:
+        print('Text too large (raw=%s, quoted=%s) to translate with google translator: %s',
+                    len(text), len(quote(text)), text)
+        return None
+
+    translator = Translator()
+    translation = translator.translate(text, dest='en')
+    print(f'dest_text: {translation.text}')
+    return translation.text
+
 
 def translate_step(step_id):
     obj_class = 'step-source'
@@ -63,7 +80,10 @@ def translate_step(step_id):
     text = response[f'{obj_class}s'][0]['block']['text']
     lesson_id = response[f'{obj_class}s'][0]['lesson']
     position = response[f'{obj_class}s'][0]['position']
+    print(f'Try to translate text: {text}')
     text = translate(text)
+    response[f'{obj_class}s'][0]['block']['text'] = text
+    print(response[f'{obj_class}s'][0])
     if name == 'text':
         data = {
             'stepSource': {
@@ -77,14 +97,7 @@ def translate_step(step_id):
         }
     else:
         data = {
-            'stepSource': {
-                'block': {
-                    'name': name,
-                    'text': text,
-                },
-                'lesson': lesson_id,
-                'position': position
-            }
+            'stepSource': response[f'{obj_class}s'][0]
         }
     response = requests.put(api_url,
                  headers={'Authorization': 'Bearer ' + token},
@@ -103,5 +116,5 @@ def translate_step(step_id):
 #
 # step_ids = [step for lesson in lessons for step in lesson['steps']]
 # steps = fetch_objects('step', step_ids)
-
-translate_step(822047)
+# https://stepik.org/lesson/50788/step/2
+translate_step(203699)
