@@ -5,17 +5,20 @@ import requests
 from urllib.parse import quote
 from googletrans import Translator
 
+import time
+
 
 logger = logging.getLogger(__name__)
 
 # Enter parameters below:
 # 1. Get your keys at https://stepik.org/oauth2/applications/
 # (client type = confidential, authorization grant type = client credentials)
-client_id = "DKAOgdHrEaVBgshlsLllp9YTtRTXxUImQyVznrBY"
-client_secret = "EZIAoy31Q4V0YF8lDmHqgWOluVn5trNVM54XBgC2doi0zcdsYKT2vCeQc1ZcjR5AMD1QVTXzX9nmxT81AvlkNoA0Yo7Vuv2OHtVepHlEKblfit38eOfKEBPwGm0dhiTn"
+client_id = ""
+client_secret = ""
 api_host = 'https://stepik.org'
-course_id = 1
+course_id = 57922
 
+REQUESTS_PER_SECOND = 1
 TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH = 15000
 
 # 2. Get a token
@@ -34,6 +37,8 @@ def fetch_object(obj_class, obj_id):
     api_url = '{}/api/{}s/{}'.format(api_host, obj_class, obj_id)
     response = requests.get(api_url,
                             headers={'Authorization': 'Bearer ' + token}).json()
+    z = response['{}s'.format(obj_class)][0]
+    print(f'fetch response: {z}')
     return response['{}s'.format(obj_class)][0]
 
 
@@ -69,52 +74,190 @@ def translate(text: str):
     return translation.text
 
 
-def translate_step(step_id):
-    obj_class = 'step-source'
-    obj_id = step_id
+def translate_course(course):
+    translate_course_info(course)
+
+    sections = fetch_objects('section', course['sections'])
+
+    unit_ids = [unit for section in sections for unit in section['units']]
+    units = fetch_objects('unit', unit_ids)
+
+    lesson_ids = [unit['lesson'] for unit in units]
+    lessons = fetch_objects('lesson', lesson_ids)
+
+    step_ids = [step for lesson in lessons for step in lesson['steps']]
+    steps = fetch_objects('step', step_ids)
+
+    for section in sections:
+        translate_section(section)
+
+    for lesson in lessons:
+        translate_lesson(lesson)
+
+    for step in steps:
+        translate_step(step)
+
+
+def translate_course_info(course):
+    obj_class = 'course'
+    obj_id = int(course['id'])
     api_url = '{}/api/{}s/{}'.format(api_host, obj_class, obj_id)
-    response = requests.get(api_url,
-                            headers={'Authorization': 'Bearer ' + token}).json()
-    print(response)
-    name = response[f'{obj_class}s'][0]['block']['name']
-    text = response[f'{obj_class}s'][0]['block']['text']
-    lesson_id = response[f'{obj_class}s'][0]['lesson']
-    position = response[f'{obj_class}s'][0]['position']
-    print(f'Try to translate text: {text}')
-    text = translate(text)
-    response[f'{obj_class}s'][0]['block']['text'] = text
-    print(response[f'{obj_class}s'][0])
-    if name == 'text':
-        data = {
-            'stepSource': {
-                'block': {
-                    'name': name,
-                    'text': text,
-                },
-                'lesson': lesson_id,
-                'position': position
-            }
-        }
+    object = fetch_object(obj_class, obj_id)
+
+    if 'description' in object:
+        description = object['description']
+        print(f'Try to translate course description: {description}')
+        description = translate(description)
+        print(f'Translated course description: {description}')
+        object['description'] = description
     else:
-        data = {
-            'stepSource': response[f'{obj_class}s'][0]
+        description = None
+
+    if 'requirements' in object:
+        requirements = object['requirements']
+        print(f'Try to translate course requirements: {requirements}')
+        requirements = translate(requirements)
+        print(f'Translated course requirements: {requirements}')
+        object['requirements'] = requirements
+    else:
+        requirements = None
+
+    if 'requirements_literature' in object:
+        requirements_literature = object['requirements_literature']
+        print(f'Try to translate course requirements literature: {requirements_literature}')
+        requirements_literature = translate(requirements_literature)
+        print(f'Translated course requirements literature: {requirements_literature}')
+        object['requirements_literature'] = requirements_literature
+    else:
+        requirements_literature = None
+
+    if 'summary' in object:
+        summary = object['summary']
+        print(f'Try to translate course summary: {summary}')
+        summary = translate(summary)
+        print(f'Translated course summary: {summary}')
+        object['summary'] = summary
+    else:
+        summary = None
+
+    if 'target_audience' in object:
+        target_audience = object['target_audience']
+        print(f'Try to translate course target_audience: {target_audience}')
+        target_audience = translate(target_audience)
+        print(f'Translated course target_audience: {target_audience}')
+        object['target_audience'] = target_audience
+    else:
+        target_audience = None
+
+    title = object['title']
+    print(f'Try to translate course title: {title}')
+    title = translate(title)
+    print(f'Translated course title: {title}')
+    object['title'] = title
+
+    if 'workload' in object:
+        workload = object['workload']
+        print(f'Try to translate course workload: {workload}')
+        workload = translate(workload)
+        print(f'Translated course workload: {workload}')
+        object['workload'] = workload
+    else:
+        workload = None
+
+    data = {
+        'course': {
+            'description': description,
+            'requirements': requirements,
+            'requirements_literature': requirements_literature,
+            'summary': summary,
+            'target_audience': target_audience,
+            'title': title,
+            'workload': workload
         }
+    }
+    print(f'data: {data}')
     response = requests.put(api_url,
                  headers={'Authorization': 'Bearer ' + token},
                  json=data
                  )
     print(response)
+    time.sleep(1/REQUESTS_PER_SECOND)
 
-# course = fetch_object('course', course_id)
-# sections = fetch_objects('section', course['sections'])
-#
-# unit_ids = [unit for section in sections for unit in section['units']]
-# units = fetch_objects('unit', unit_ids)
-#
-# lesson_ids = [unit['lesson'] for unit in units]
-# lessons = fetch_objects('lesson', lesson_ids)
-#
-# step_ids = [step for lesson in lessons for step in lesson['steps']]
-# steps = fetch_objects('step', step_ids)
-# https://stepik.org/lesson/50788/step/2
-translate_step(203699)
+
+def translate_lesson(lesson):
+    obj_class = 'lesson'
+    obj_id = int(lesson['id'])
+    api_url = '{}/api/{}s/{}'.format(api_host, obj_class, obj_id)
+    object = fetch_object(obj_class, obj_id)
+    print(object)
+    text = object['title']
+    print(f'Try to translate lesson title: {text}')
+    text = translate(text)
+    print(f'Translated lesson title: {text}')
+    object['title'] = text
+    data = {
+        'lesson': {
+            'title': text
+        }
+    }
+    print(f'data: {data}')
+    response = requests.put(api_url,
+                 headers={'Authorization': 'Bearer ' + token},
+                 json=data
+                 )
+    print(response)
+    time.sleep(1/REQUESTS_PER_SECOND)
+
+def translate_section(section):
+    obj_class = 'section'
+    obj_id = int(section['id'])
+    api_url = '{}/api/{}s/{}'.format(api_host, obj_class, obj_id)
+    object = fetch_object(obj_class, obj_id)
+    print(object)
+    text = object['title']
+    print(f'Try to translate section title: {text}')
+    text = translate(text)
+    print(f'Translated section title: {text}')
+    object['title'] = text
+    data = {
+        'section': {
+            'title': text
+        }
+    }
+    print(f'data: {data}')
+    response = requests.put(api_url,
+                 headers={'Authorization': 'Bearer ' + token},
+                 json=data
+                 )
+    print(response)
+    time.sleep(1/REQUESTS_PER_SECOND)
+
+def translate_step(step):
+    obj_class = 'step-source'
+    obj_id = int(step['id'])
+    api_url = '{}/api/{}s/{}'.format(api_host, obj_class, obj_id)
+    object = fetch_object(obj_class, obj_id)
+    name = object['block']['name']
+    text = object['block']['text']
+    lesson_id = object['lesson']
+    position = object['position']
+    print(f'Try to translate text: {text}')
+    text = translate(text)
+    print(f'Translated step text: {text}')
+    object['block']['text'] = text
+    print(object)
+    data = {
+        'stepSource': object
+    }
+    response = requests.put(api_url,
+                 headers={'Authorization': 'Bearer ' + token},
+                 json=data
+                 )
+    print(response)
+    time.sleep(1/REQUESTS_PER_SECOND)
+
+
+course = fetch_object('course', course_id)
+
+translate_course(course)
+
