@@ -2,7 +2,7 @@
 # Translate all steps texts from course.
 import logging
 import requests
-from urllib.parse import quote
+
 from googletrans import Translator
 
 import time
@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 # Enter parameters below:
 # 1. Get your keys at https://stepik.org/oauth2/applications/
 # (client type = confidential, authorization grant type = client credentials)
-client_id = ""
-client_secret = ""
+
 api_host = 'https://stepik.org'
-course_id = 57922
+# course_id = 57922
+course_id = 58150
 
 REQUESTS_PER_SECOND = 1
 TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH = 15000
@@ -63,15 +63,46 @@ def fetch_objects(obj_class, obj_ids, keep_order=True):
 
 
 def translate(text: str):
-    if len(quote(text)) > TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH:
-        print('Text too large (raw=%s, quoted=%s) to translate with google translator: %s',
-                    len(text), len(quote(text)), text)
-        return None
 
     translator = Translator()
-    translation = translator.translate(text, dest='en')
-    print(f'dest_text: {translation.text}')
-    return translation.text
+
+    i = 0
+    translated_text = ""
+    while i < len(text):
+        if text[i] == "<":
+            print("collect tag")
+            while True:
+                translated_text += text[i]
+                if text[i] == ">":
+                    i += 1
+                    break
+
+                i += 1
+            continue
+
+        text_slice = ""
+        print("collect text slice")
+        while i < len(text):
+            print("symbol: ", text[i])
+            text_slice += text[i]
+            print("text slice: ", text_slice)
+            i += 1
+            if i == len(text) or text[i] == "<":
+                # text_slice_escaped = html.unescape(text_slice)
+                # print("escaped ", text_slice_escaped)
+
+                translated_text_slice = translator.translate(text_slice, dest='en')
+                print("translation object", translated_text_slice)
+                print("!!! translated text slice: ", translated_text_slice)
+                translated_text += translated_text_slice
+                # print("!!!", translated_text)
+                break
+
+
+    # print(f'dest_text: {translation.text}')
+    # return translation.text
+    print(f'dest_text: {translated_text}')
+    return translated_text
 
 
 def translate_course(course):
@@ -208,6 +239,7 @@ def translate_lesson(lesson):
     print(response)
     time.sleep(1/REQUESTS_PER_SECOND)
 
+
 def translate_section(section):
     obj_class = 'section'
     obj_id = int(section['id'])
@@ -231,6 +263,7 @@ def translate_section(section):
                  )
     print(response)
     time.sleep(1/REQUESTS_PER_SECOND)
+
 
 def translate_step(step):
     obj_class = 'step-source'
@@ -259,5 +292,11 @@ def translate_step(step):
 
 course = fetch_object('course', course_id)
 
-translate_course(course)
+# translate_course(course)
 
+# translate("С:\\Users\\Юлия\\environments&gt; python\n")
+
+import json
+data = '"\\"foo\\bar"'
+converted = json.loads(data)
+translate('<p>привет</p>')
