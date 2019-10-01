@@ -1,5 +1,6 @@
 # Run with Python 3
 # Translate all steps texts from course.
+import html
 import logging
 import requests
 
@@ -18,8 +19,12 @@ api_host = 'https://stepik.org'
 # course_id = 57922
 course_id = 58150
 
-REQUESTS_PER_SECOND = 1
+
+DEST_LANG = "en"
+SRC_LANG = "ru"
+REQUESTS_PER_SECOND = 2
 TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH = 15000
+
 
 # 2. Get a token
 auth = requests.auth.HTTPBasicAuth(client_id, client_secret)
@@ -88,14 +93,35 @@ def translate(text: str):
             print("text slice: ", text_slice)
             i += 1
             if i == len(text) or text[i] == "<":
-                # text_slice_escaped = html.unescape(text_slice)
-                # print("escaped ", text_slice_escaped)
+                text_slice_escaped = html.unescape(text_slice)
+                print("escaped ", text_slice_escaped)
 
-                translated_text_slice = translator.translate(text_slice, dest='en')
-                print("translation object", translated_text_slice)
-                print("!!! translated text slice: ", translated_text_slice)
-                translated_text += translated_text_slice
-                # print("!!!", translated_text)
+                try:
+                    lang = translator.detect(text_slice_escaped).lang
+                    print("detected language: ", lang)
+                    if lang == DEST_LANG:
+                        print(f"Text is translated yet to {lang}")
+                        translated_text_slice = text_slice_escaped
+                        print("!!! translated text slice: ", translated_text_slice)
+                        translated_text += translated_text_slice
+                        print("!!!", translated_text)
+
+                        break
+
+                except Exception as e:
+                    logger.warning('Google translator error: %s', e, exc_info=True)
+
+                try:
+                    translated_text_slice = translator.translate(
+                        text_slice_escaped, dest=DEST_LANG, src=SRC_LANG).text
+                    print("!!! translated text slice: ", translated_text_slice)
+                    translated_text += translated_text_slice
+                    print("!!!", translated_text)
+
+                except Exception as e:
+                    logger.warning('Google translator error: %s', e, exc_info=True)
+                    break
+
                 break
 
 
@@ -296,7 +322,8 @@ course = fetch_object('course', course_id)
 
 # translate("С:\\Users\\Юлия\\environments&gt; python\n")
 
-import json
-data = '"\\"foo\\bar"'
-converted = json.loads(data)
-translate('<p>привет</p>')
+# import json
+# data = '"\\"foo\\bar"'
+# converted = json.loads(data)
+# translate("<p>work↵↵</p><p>работа↵↵</p>")
+translate("<p>home</p><p>дом</p>")
