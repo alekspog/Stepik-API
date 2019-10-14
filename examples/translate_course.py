@@ -14,15 +14,13 @@ logger = logging.getLogger(__name__)
 # Enter parameters below:
 # 1. Get your keys at https://stepik.org/oauth2/applications/
 # (client type = confidential, authorization grant type = client credentials)
-
 api_host = 'https://stepik.org'
-# course_id = 57922
-course_id = 58150
+course_id = ...
 
 
 DEST_LANG = "en"
 SRC_LANG = "ru"
-REQUESTS_PER_SECOND = 2
+REQUESTS_PER_SECOND = 0.1
 TRANSLATIONS_GOOGLE_TRANSLATE_TEXT_MAX_LENGTH = 15000
 
 
@@ -120,7 +118,7 @@ def translate(text: str):
 
                 except Exception as e:
                     logger.warning('Google translator error: %s', e, exc_info=True)
-                    break
+                    return None
 
                 break
 
@@ -166,7 +164,9 @@ def translate_course_info(course):
         print(f'Try to translate course description: {description}')
         description = translate(description)
         print(f'Translated course description: {description}')
-        object['description'] = description
+
+        if description:
+            object['description'] = description
     else:
         description = None
 
@@ -175,7 +175,8 @@ def translate_course_info(course):
         print(f'Try to translate course requirements: {requirements}')
         requirements = translate(requirements)
         print(f'Translated course requirements: {requirements}')
-        object['requirements'] = requirements
+        if requirements:
+            object['requirements'] = requirements
     else:
         requirements = None
 
@@ -184,7 +185,8 @@ def translate_course_info(course):
         print(f'Try to translate course requirements literature: {requirements_literature}')
         requirements_literature = translate(requirements_literature)
         print(f'Translated course requirements literature: {requirements_literature}')
-        object['requirements_literature'] = requirements_literature
+        if requirements_literature:
+            object['requirements_literature'] = requirements_literature
     else:
         requirements_literature = None
 
@@ -193,7 +195,8 @@ def translate_course_info(course):
         print(f'Try to translate course summary: {summary}')
         summary = translate(summary)
         print(f'Translated course summary: {summary}')
-        object['summary'] = summary
+        if summary:
+            object['summary'] = summary
     else:
         summary = None
 
@@ -202,7 +205,8 @@ def translate_course_info(course):
         print(f'Try to translate course target_audience: {target_audience}')
         target_audience = translate(target_audience)
         print(f'Translated course target_audience: {target_audience}')
-        object['target_audience'] = target_audience
+        if target_audience:
+            object['target_audience'] = target_audience
     else:
         target_audience = None
 
@@ -210,14 +214,16 @@ def translate_course_info(course):
     print(f'Try to translate course title: {title}')
     title = translate(title)
     print(f'Translated course title: {title}')
-    object['title'] = title
+    if title:
+        object['title'] = title
 
     if 'workload' in object:
         workload = object['workload']
         print(f'Try to translate course workload: {workload}')
         workload = translate(workload)
         print(f'Translated course workload: {workload}')
-        object['workload'] = workload
+        if workload:
+            object['workload'] = workload
     else:
         workload = None
 
@@ -251,19 +257,20 @@ def translate_lesson(lesson):
     print(f'Try to translate lesson title: {text}')
     text = translate(text)
     print(f'Translated lesson title: {text}')
-    object['title'] = text
-    data = {
-        'lesson': {
-            'title': text
+    if text:
+        object['title'] = text
+        data = {
+            'lesson': {
+                'title': text
+            }
         }
-    }
-    print(f'data: {data}')
-    response = requests.put(api_url,
-                 headers={'Authorization': 'Bearer ' + token},
-                 json=data
-                 )
-    print(response)
-    time.sleep(1/REQUESTS_PER_SECOND)
+        print(f'data: {data}')
+        response = requests.put(api_url,
+                     headers={'Authorization': 'Bearer ' + token},
+                     json=data
+                     )
+        print(response)
+        time.sleep(1/REQUESTS_PER_SECOND)
 
 
 def translate_section(section):
@@ -276,19 +283,20 @@ def translate_section(section):
     print(f'Try to translate section title: {text}')
     text = translate(text)
     print(f'Translated section title: {text}')
-    object['title'] = text
-    data = {
-        'section': {
-            'title': text
+    if text:
+        object['title'] = text
+        data = {
+            'section': {
+                'title': text
+            }
         }
-    }
-    print(f'data: {data}')
-    response = requests.put(api_url,
-                 headers={'Authorization': 'Bearer ' + token},
-                 json=data
-                 )
-    print(response)
-    time.sleep(1/REQUESTS_PER_SECOND)
+        print(f'data: {data}')
+        response = requests.put(api_url,
+                     headers={'Authorization': 'Bearer ' + token},
+                     json=data
+                     )
+        print(response)
+        time.sleep(1/REQUESTS_PER_SECOND)
 
 
 def translate_step(step):
@@ -303,27 +311,20 @@ def translate_step(step):
     print(f'Try to translate text: {text}')
     text = translate(text)
     print(f'Translated step text: {text}')
-    object['block']['text'] = text
-    print(object)
-    data = {
-        'stepSource': object
-    }
-    response = requests.put(api_url,
-                 headers={'Authorization': 'Bearer ' + token},
-                 json=data
-                 )
-    print(response)
-    time.sleep(1/REQUESTS_PER_SECOND)
+    if text:
+        object['block']['text'] = text
+        print(object)
+        data = {
+            'stepSource': object
+        }
+        response = requests.put(api_url,
+                     headers={'Authorization': 'Bearer ' + token},
+                     json=data
+                     )
+        print(response)
+        time.sleep(1/REQUESTS_PER_SECOND)
 
 
 course = fetch_object('course', course_id)
 
-# translate_course(course)
-
-# translate("С:\\Users\\Юлия\\environments&gt; python\n")
-
-# import json
-# data = '"\\"foo\\bar"'
-# converted = json.loads(data)
-# translate("<p>work↵↵</p><p>работа↵↵</p>")
-translate("<p>home</p><p>дом</p>")
+translate_course(course)
